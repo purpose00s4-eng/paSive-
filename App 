@@ -1,345 +1,416 @@
-import React, { useState, useEffect, useRef } from 'react';
-
-const App = () => {
-  const [currentPage, setCurrentPage] = useState('Overview');
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [transactions, setTransactions] = useState([
-    { description: 'Groceries', amount: -75.20, category: 'Food' },
-    { description: 'Freelance work', amount: 500.00, category: 'Income' },
-    { description: 'Coffee shop', amount: -5.50, category: 'Food' },
-    { description: 'Netflix subscription', amount: -15.49, category: 'Entertainment' },
-    { description: 'Gym membership', amount: -45.00, category: 'Health' },
-  ]);
-  const [newTransaction, setNewTransaction] = useState({ description: '', amount: '' });
-  const [insights, setInsights] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const startX = useRef(0);
-  const isDragging = useRef(false);
-  const sidebarWidth = 280;
-  const sidebarRef = useRef(null);
-  
-  const API_KEY = ""; // Gemini API Key
-  const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${API_KEY}`;
-  
-  const getFinancialInsights = async () => {
-    setIsLoading(true);
-    setInsights('');
-    const transactionText = transactions.map(t => `${t.description}: $${t.amount}`).join('\n');
-    const systemPrompt = "You are a financial analyst. Provide a brief, single-paragraph summary of the user's financial habits based on their transactions. Focus on spending categories and highlight any noteworthy trends. Do not mention specific transaction amounts.";
-    const userQuery = `Analyze the following transactions:\n${transactionText}`;
-    
-    const payload = {
-        contents: [{ parts: [{ text: userQuery }] }],
-        systemInstruction: { parts: [{ text: systemPrompt }] },
-        tools: [{ "google_search": {} }],
-    };
-
-    try {
-        const response = await fetch(API_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-        const result = await response.json();
-        const generatedText = result?.candidates?.[0]?.content?.parts?.[0]?.text;
-        setInsights(generatedText || 'Could not generate insights. Please try again.');
-    } catch (error) {
-        console.error('Error fetching insights:', error);
-        setInsights('An error occurred. Please try again later.');
-    } finally {
-        setIsLoading(false);
-    }
-  };
-
-  const handleTouchStart = (e) => {
-    isDragging.current = true;
-    startX.current = e.touches[0].clientX;
-    sidebarRef.current.style.transition = 'none';
-  };
-
-  const handleTouchMove = (e) => {
-    if (!isDragging.current) return;
-    const currentX = e.touches[0].clientX;
-    const diffX = currentX - startX.current;
-    if (diffX > 0) {
-      const newTranslateX = Math.min(0, diffX - sidebarWidth);
-      sidebarRef.current.style.transform = `translateX(${newTranslateX}px)`;
-    }
-  };
-
-  const handleTouchEnd = (e) => {
-    isDragging.current = false;
-    sidebarRef.current.style.transition = 'transform 0.3s cubic-bezier(0.2, 0.8, 0.5, 1)';
-    const endX = e.changedTouches[0].clientX;
-    const diffX = endX - startX.current;
-    if (diffX > sidebarWidth / 2) {
-      setIsSidebarOpen(true);
-    } else {
-      setIsSidebarOpen(false);
-    }
-  };
-
-  useEffect(() => {
-    window.addEventListener('touchstart', handleTouchStart, { passive: true });
-    window.addEventListener('touchmove', handleTouchMove, { passive: false });
-    window.addEventListener('touchend', handleTouchEnd);
-
-    return () => {
-      window.removeEventListener('touchstart', handleTouchStart);
-      window.removeEventListener('touchmove', handleTouchMove);
-      window.removeEventListener('touchend', handleTouchEnd);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (sidebarRef.current) {
-      const translateX = isSidebarOpen ? 0 : -sidebarWidth;
-      sidebarRef.current.style.transform = `translateX(${translateX}px)`;
-    }
-  }, [isSidebarOpen]);
-
-  const navLinks = [
-    { href: 'Overview', label: 'Overview' },
-    { href: 'Payments', label: 'Payments' },
-    { href: 'Investments', label: 'Investments' },
-    { href: 'Services', label: 'Direct Services' },
-    { href: 'Crowdfunding', label: 'Crowdfunding' },
-  ];
-
-  const handleAddTransaction = (e) => {
-    e.preventDefault();
-    if (newTransaction.description && newTransaction.amount) {
-      setTransactions([...transactions, {
-        description: newTransaction.description,
-        amount: parseFloat(newTransaction.amount),
-        category: 'Uncategorized' // Default category
-      }]);
-      setNewTransaction({ description: '', amount: '' });
-    }
-  };
-
-  const menuIcon = (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-menu">
-      <line x1="4" x2="20" y1="12" y2="12"></line>
-      <line x1="4" x2="20" y1="6" y2="6"></line>
-      <line x1="4" x2="20" y1="18" y2="18"></line>
-    </svg>
-  );
-
-  const HomeIcon = (props) => (
-    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-      <polyline points="9 22 9 12 15 12 15 22"></polyline>
-    </svg>
-  );
-  
-  const UserIcon = (props) => (
-    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path>
-      <circle cx="12" cy="7" r="4"></circle>
-    </svg>
-  );
-
-  const TrendingUpIcon = (props) => (
-    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline>
-      <polyline points="16 7 22 7 22 13"></polyline>
-    </svg>
-  );
-
-  const SettingsIcon = (props) => (
-    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.26.47a2 2 0 0 0 .73 2.73l.15.08a2 2 0 0 1 1 1.73v.5a2 2 0 0 1-1 1.73l-.15.08a2 2 0 0 0-.73 2.73l.26.47a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.26-.47a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.73v-.5a2 2 0 0 1 1-1.73l.15-.08a2 2 0 0 0 .73-2.73l-.26-.47a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2-1.73V4a2 2 0 0 0-2-2z"></path>
-      <circle cx="12" cy="12" r="3"></circle>
-    </svg>
-  );
-
-  const renderPage = () => {
-    switch (currentPage) {
-      case 'Overview':
-        const currentBalance = transactions.reduce((sum, t) => sum + t.amount, 0);
-        return (
-          <div className="md:col-span-2 space-y-6">
-            <section id="overview" className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="p-6 rounded-xl shadow-lg bg-white">
-                <p className="text-sm font-light opacity-80">Current Balance</p>
-                <div className="text-5xl font-bold mt-2">${currentBalance.toFixed(2)}</div>
-              </div>
-              <div className="p-6 rounded-xl shadow-lg bg-gray-50">
-                <h2 className="text-2xl font-semibold text-gray-800 mb-4">Add Transaction</h2>
-                <form className="space-y-4" onSubmit={handleAddTransaction}>
-                  <div>
-                    <label htmlFor="description" className="block text-sm font-medium text-gray-700">Description</label>
-                    <input 
-                      type="text" 
-                      id="description" 
-                      value={newTransaction.description}
-                      onChange={(e) => setNewTransaction({ ...newTransaction, description: e.target.value })}
-                      required 
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm" />
-                  </div>
-                  <div>
-                    <label htmlFor="amount" className="block text-sm font-medium text-gray-700">Amount ($)</label>
-                    <input 
-                      type="number" 
-                      id="amount" 
-                      value={newTransaction.amount}
-                      onChange={(e) => setNewTransaction({ ...newTransaction, amount: e.target.value })}
-                      required 
-                      step="0.01" 
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm" />
-                  </div>
-                  <button type="submit" className="w-full py-2 px-4 rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition-colors">Add Transaction</button>
-                </form>
-              </div>
-              <div className="p-6 rounded-xl shadow-lg bg-white lg:col-span-2">
-                <h2 className="text-2xl font-semibold text-gray-800 mb-4">Transaction History</h2>
-                <div className="space-y-3">
-                  {transactions.length > 0 ? (
-                    transactions.map((t, index) => (
-                      <div key={index} className="flex justify-between items-center p-3 rounded-lg bg-gray-50">
-                        <span className="text-gray-800 font-medium">{t.description}</span>
-                        <span className={`font-semibold ${t.amount >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                          ${t.amount.toFixed(2)}
-                        </span>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-center text-gray-500 mt-4">No transactions yet. Add one!</p>
-                  )}
-                </div>
-              </div>
-            </section>
-            <section id="insights" className="mt-6 p-6 rounded-xl shadow-lg bg-white lg:col-span-2">
-              <h2 className="text-2xl font-semibold text-gray-800 mb-4">Financial Insights</h2>
-              <button
-                onClick={getFinancialInsights}
-                disabled={isLoading}
-                className="w-full py-3 px-4 rounded-md shadow-sm text-lg font-medium text-white bg-violet-600 hover:bg-violet-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
-              >
-                {isLoading ? 'Analyzing...' : '✨ Get AI Financial Insights'}
-              </button>
-              {insights && (
-                <div className="mt-4 p-4 rounded-lg bg-gray-50 border border-gray-200">
-                  <p className="text-gray-700 whitespace-pre-wrap">{insights}</p>
-                </div>
-              )}
-            </section>
-          </div>
-        );
-      case 'Payments':
-        return (
-          <div className="p-8 rounded-xl shadow-lg bg-white">
-            <h2 className="text-3xl font-bold mb-4">Payments</h2>
-            <p className="text-gray-600">This section would contain features for sending money and paying bills.</p>
-          </div>
-        );
-      case 'Investments':
-        return (
-          <div className="p-8 rounded-xl shadow-lg bg-white">
-            <h2 className="text-3xl font-bold mb-4">Investments</h2>
-            <p className="text-gray-600">This section would show your investment portfolio and market data.</p>
-          </div>
-        );
-      case 'Services':
-        return (
-          <div className="p-8 rounded-xl shadow-lg bg-white">
-            <h2 className="text-3xl font-bold mb-4">Direct Services</h2>
-            <p className="text-gray-600">This would be a marketplace for direct services.</p>
-          </div>
-        );
-      case 'Crowdfunding':
-        return (
-          <div className="p-8 rounded-xl shadow-lg bg-white">
-            <h2 className="text-3xl font-bold mb-4">Crowdfunding</h2>
-            <p className="text-gray-600">This section would manage group purchases for bulk goods.</p>
-          </div>
-        );
-      case 'Settings':
-        return (
-          <div className="p-8 rounded-xl shadow-lg bg-white">
-            <h2 className="text-3xl font-bold mb-4">Settings</h2>
-            <p className="text-gray-600">Customize your app preferences here.</p>
-          </div>
-        );
-      default:
-        return null;
-    }
-  };
-
-  return (
-    <div className="min-h-screen bg-gray-100 font-sans antialiased text-gray-800">
-      <style>{`
-        body { font-family: 'Inter', sans-serif; }
-        .dashboard-card { background-color: white; border-radius: 1.5rem; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); transition: transform 0.2s; }
-        .dashboard-card:hover { transform: translateY(-5px); }
-        .side-menu-container { position: fixed; top: 0; left: 0; height: 100%; max-width: 280px; z-index: 50; transition: transform 0.3s ease-out; box-shadow: 0 0 20px rgba(0,0,0,0.2); }
-        .menu-backdrop { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.4); z-index: 40; opacity: 0; visibility: hidden; transition: opacity 0.3s ease; }
-        .menu-backdrop.open { opacity: 1; visibility: visible; }
-        @media (min-width: 1024px) {
-          .side-menu-container { transform: translateX(0) !important; position: static; box-shadow: none; }
-          .menu-backdrop { display: none; }
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Personal Finance Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
         }
-      `}</style>
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #e5e7eb;
+            border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #9ca3af;
+            border-radius: 10px;
+        }
+        .active-menu-link {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-50 flex min-h-screen">
 
-      {/* Mobile-only menu button */}
-      <div className="lg:hidden fixed top-4 left-4 z-50">
-        <button onClick={() => setIsSidebarOpen(true)} className="p-2 bg-indigo-600 text-white rounded-full shadow-lg">
-          {menuIcon}
-        </button>
-      </div>
-      
-      {/* Sidebar Component */}
-      <div 
-        ref={sidebarRef}
-        className="side-menu-container bg-gray-50 flex flex-col p-6"
-        style={{ transform: `translateX(${-sidebarWidth}px)` }}
-      >
-        <div className="flex items-center space-x-2 mb-8">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-chart-line text-3xl text-indigo-600">
-              <path d="M3 3v18h18"></path>
-              <path d="m18 10-5 5-4-4-3 3"></path>
-            </svg>
-            <h1 className="text-3xl font-bold text-gray-900">Fintech</h1>
+    <!-- Side Menu -->
+    <aside id="side-menu" class="fixed inset-y-0 left-0 transform -translate-x-full md:relative md:translate-x-0 transition-transform duration-300 ease-in-out bg-white dark:bg-gray-800 w-64 p-6 flex flex-col shadow-lg z-50">
+        <div class="flex items-center justify-between mb-8">
+            <h2 class="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-500 to-blue-500">Menu</h2>
+            <button id="close-menu-btn" class="text-gray-500 md:hidden">&times;</button>
         </div>
-        <nav className="space-y-2 text-lg font-medium flex-1">
-          {navLinks.map((link) => (
-            <div key={link.href}>
-              <a 
-                href="#"
-                onClick={() => { setCurrentPage(link.href); setIsSidebarOpen(false); }}
-                className={`flex items-center space-x-3 p-3 rounded-xl transition-colors ${currentPage === link.href ? 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200' : 'text-gray-600 hover:bg-gray-100'}`}
-              >
-                {link.label === 'Overview' && <HomeIcon className="h-6 w-6" />}
-                {link.label === 'Payments' && <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-credit-card"><rect width="20" height="14" x="2" y="5" rx="2"></rect><line x1="2" x2="22" y1="10" y2="10"></line></svg>}
-                {link.label === 'Investments' && <TrendingUpIcon className="h-6 w-6" />}
-                {link.label === 'Services' && <UserIcon className="h-6 w-6" />}
-                {link.label === 'Crowdfunding' && <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-hand-holding-usd"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2z"></path><path d="M12 18V6"></path><path d="M17 12H7"></path><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"></path><path d="M12 18a6 6 0 1 0 0-12 6 6 0 0 0 0 12z"></path></svg>}
-                <span>{link.label}</span>
-              </a>
-            </div>
-          ))}
+        <nav class="space-y-2">
+            <a href="#" id="transactions-page-btn" class="menu-btn flex items-center space-x-3 p-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors font-semibold active-menu-link">
+                <!-- SVG Icon for Transactions -->
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-wallet"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M10 9a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2h0a2 2 0 0 1-2-2z"/></svg>
+                <span>Transactions</span>
+            </a>
+            <a href="#" id="save-page-btn" class="menu-btn flex items-center space-x-3 p-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors font-semibold">
+                <!-- SVG Icon for Save -->
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-piggy-bank"><path d="M16 2h2a2 2 0 0 1 2 2v7.942a2 2 0 0 1-.581 1.41l-3.323 3.324A3 3 0 0 1 14 18H5a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h11z"/><path d="M20 18v2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-2"/><path d="M11 11a1 1 0 1 0 0-2 1 1 0 0 0 0 2z"/></svg>
+                <span>Save</span>
+            </a>
+            <a href="#" id="buy-data-page-btn" class="menu-btn flex items-center space-x-3 p-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors font-semibold">
+                <!-- SVG Icon for Data -->
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-cloud-data"><path d="M22 17a5 5 0 0 0-5-5H8a5 5 0 0 0-4.32 7.5L5 20h11"/><path d="M17 12a5 5 0 0 0-5-5h-1"/><path d="M12 2a5 5 0 0 0-4.5 3h1.36a3 3 0 0 1 0 6H12a3 3 0 0 1 0-6h1.36A5 5 0 0 0 12 2z"/></svg>
+                <span>Buy Data</span>
+            </a>
+            <a href="#" id="invest-page-btn" class="menu-btn flex items-center space-x-3 p-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors font-semibold">
+                <!-- SVG Icon for Invest -->
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-line-chart"><path d="M3 3v18h18"/><path d="M18.7 8.3c-2.3 2.3-4.3 2.6-5.4 1.1-.3-.3-.7-.5-.9-.6-.2-.1-.5-.2-.8-.2-.3-.1-.7 0-1.1.2s-.7.6-.9.9c-.2.3-.3.6-.3.9a1.6 1.6 0 0 1-.2 1.2c-.3 1-.8 1.9-1.5 2.5-1.1.8-2.3.9-3.2.7"/><path d="m14 13 4 4"/></svg>
+                <span>Invest</span>
+            </a>
+            <a href="#" id="service-page-btn" class="menu-btn flex items-center space-x-3 p-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors font-semibold">
+                <!-- SVG Icon for Service -->
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-headset"><path d="M17 19v-6a5 5 0 0 0-5-5H7a5 5 0 0 0-5 5v6a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2v-2a2 2 0 0 0-2-2H4"/><path d="M12 17v-2a4 4 0 0 1 4-4h2a4 4 0 0 1 4 4v2a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2z"/></svg>
+                <span>Service</span>
+            </a>
+            <a href="#" id="contact-page-btn" class="menu-btn flex items-center space-x-3 p-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors font-semibold">
+                <!-- SVG Icon for Contact -->
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-mail"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-10 7L2 7"/></svg>
+                <span>Contact</span>
+            </a>
+            <a href="#" id="payment-page-btn" class="menu-btn flex items-center space-x-3 p-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors font-semibold">
+                <!-- SVG Icon for Payment -->
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-credit-card"><rect width="20" height="14" x="2" y="5" rx="2"/><path d="M2 10h20"/><path d="M7 15h3"/><path d="M7 19h5"/></svg>
+                <span>Payment</span>
+            </a>
         </nav>
-        <div className="mt-auto p-4">
-          <a href="#" onClick={() => { setCurrentPage('Settings'); setIsSidebarOpen(false); }} className="flex items-center gap-3 rounded-lg p-3 text-gray-600 transition-all hover:bg-gray-100 hover:text-primary">
-            <SettingsIcon className="h-6 w-6" />
-            <span>Settings</span>
-          </a>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 p-4 md:p-8 overflow-y-auto">
+        <!-- Header for mobile -->
+        <header class="flex justify-between items-center mb-6 md:hidden">
+            <h1 class="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-500 to-blue-500">
+                Finances
+            </h1>
+            <button id="open-menu-btn" class="p-2 rounded-xl text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700 transition">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-menu"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>
+            </button>
+        </header>
+
+        <!-- Dynamic Content Pages -->
+        <div id="transactions-page" class="page bg-white dark:bg-gray-800 p-6 md:p-8 rounded-2xl shadow-2xl w-full max-w-lg mx-auto">
+            <h1 class="text-3xl font-bold text-center mb-6 text-transparent bg-clip-text bg-gradient-to-r from-purple-500 to-blue-500 md:block hidden">
+                Personal Finance Tracker
+            </h1>
+            <!-- Balance and Summary Section -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center text-sm font-semibold mb-6">
+                <div class="bg-blue-100 dark:bg-blue-900 p-4 rounded-xl shadow-md">
+                    <p class="text-blue-500">Balance</p>
+                    <p id="balance-amount" class="text-xl font-bold text-blue-800 dark:text-blue-200">$0.00</p>
+                </div>
+                <div class="bg-green-100 dark:bg-green-900 p-4 rounded-xl shadow-md">
+                    <p class="text-green-500">Income</p>
+                    <p id="income-amount" class="text-xl font-bold text-green-800 dark:text-green-200">$0.00</p>
+                </div>
+                <div class="bg-red-100 dark:bg-red-900 p-4 rounded-xl shadow-md">
+                    <p class="text-red-500">Expenses</p>
+                    <p id="expense-amount" class="text-xl font-bold text-red-800 dark:text-red-200">$0.00</p>
+                </div>
+            </div>
+            <!-- Transaction Form -->
+            <div class="mb-6">
+                <input type="text" id="description-input" placeholder="Description" class="w-full p-3 mb-2 border border-gray-300 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors">
+                <input type="number" id="amount-input" placeholder="Amount" class="w-full p-3 mb-2 border border-gray-300 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors">
+                <div class="flex space-x-2">
+                    <button id="income-btn" class="flex-1 p-3 rounded-xl bg-green-500 text-white font-semibold shadow-md hover:bg-green-600 transition-colors">Add Income</button>
+                    <button id="expense-btn" class="flex-1 p-3 rounded-xl bg-red-500 text-white font-semibold shadow-md hover:bg-red-600 transition-colors">Add Expense</button>
+                </div>
+            </div>
+            <!-- Transaction List -->
+            <div>
+                <h2 class="text-xl font-bold mb-4">Transactions</h2>
+                <ul id="transactions-list" class="space-y-3 max-h-64 overflow-y-auto custom-scrollbar pr-2">
+                    <!-- Transactions will be dynamically added here -->
+                </ul>
+            </div>
         </div>
-      </div>
-      
-      {/* Main Content */}
-      <main className="p-8 lg:ml-72 transition-all">
-        {renderPage()}
-      </main>
 
-      {/* Mobile-only backdrop */}
-      <div 
-        onClick={() => setIsSidebarOpen(false)} 
-        className={`menu-backdrop ${isSidebarOpen ? 'open' : ''}`}
-      ></div>
-    </div>
-  );
-};
+        <div id="save-page" class="page hidden p-8 text-center bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-lg mx-auto">
+            <h2 class="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-500 to-blue-500 mb-4">Save Money</h2>
+            <p class="text-lg text-gray-700 dark:text-gray-300">Start saving for your financial goals. Track your progress here!</p>
+            <div class="mt-6">
+                <img src="https://placehold.co/400x200/e0e7ff/3f51b5?text=Savings+Goal" alt="Savings Placeholder" class="rounded-xl mx-auto shadow-md">
+            </div>
+        </div>
 
-export default App;
+        <div id="buy-data-page" class="page hidden p-8 text-center bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-lg mx-auto">
+            <h2 class="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-500 to-blue-500 mb-4">Buy Data</h2>
+            <p class="text-lg text-gray-700 dark:text-gray-300">Top up your mobile data with ease. Select a plan and pay instantly.</p>
+            <div class="mt-6">
+                <img src="https://placehold.co/400x200/d1c4e9/673ab7?text=Data+Plans" alt="Data Plans Placeholder" class="rounded-xl mx-auto shadow-md">
+            </div>
+        </div>
+
+        <div id="invest-page" class="page hidden p-8 text-center bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-lg mx-auto">
+            <h2 class="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-500 to-blue-500 mb-4">Invest</h2>
+            <p class="text-lg text-gray-700 dark:text-gray-300">Grow your wealth with smart investments. Explore stocks, crypto, and more.</p>
+            <div class="mt-6">
+                <img src="https://placehold.co/400x200/c5e1a5/8bc34a?text=Investment+Portfolio" alt="Investment Placeholder" class="rounded-xl mx-auto shadow-md">
+            </div>
+        </div>
+
+        <div id="service-page" class="page hidden p-8 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-2xl mx-auto">
+            <h2 class="text-3xl font-bold text-center text-transparent bg-clip-text bg-gradient-to-r from-purple-500 to-blue-500 mb-6">Our Services</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+                <!-- Conservative Portfolio Card -->
+                <div class="p-6 rounded-xl border border-gray-200 dark:border-gray-700 flex flex-col items-center text-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-shield-half"><path d="M12 21.4c-2.4 0-4.7-.6-6.7-1.8-1.9-1.3-3.3-3.2-4.1-5.4C.5 12.3 1 9.9 2.2 7.9c1.2-2 3-3.6 5.1-4.7C9.3 2 11.6 1.5 14 1.6V21.4z"/></svg>
+                    <h3 class="text-xl font-semibold mt-4 mb-2">Conservative Low-Risk</h3>
+                    <p class="text-sm text-gray-600 dark:text-gray-400">For steady, long-term growth with minimal risk.</p>
+                    <button data-type="conservative" class="learn-more-btn mt-4 p-2 w-full rounded-xl bg-blue-500 text-white font-semibold shadow-md hover:bg-blue-600 transition-colors">Learn More</button>
+                </div>
+
+                <!-- Balanced Portfolio Card -->
+                <div class="p-6 rounded-xl border border-gray-200 dark:border-gray-700 flex flex-col items-center text-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-scale"><path d="M21 15c-2.2-2.6-4.9-3.4-7.8-2.5-2.9.9-5.7 2.3-8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8.3s-.4-5.6-2.5-7.8l-1-1c.2-.2.5-.5.7-.7l1.4-1.4c2.6-2.2 5.6-3.1 8.5-2.2 2.9.9 5.7 2.3 8.3 4.8l2.9 2.9h-8v-8l2.9 2.9c2.5-2.6 4-5.4 4.8-8-8z"/><path d="M12 21.4c-2.4 0-4.7-.6-6.7-1.8-1.9-1.3-3.3-3.2-4.1-5.4C.5 12.3 1 9.9 2.2 7.9c1.2-2 3-3.6 5.1-4.7C9.3 2 11.6 1.5 14 1.6V21.4z"/></svg>
+                    <h3 class="text-xl font-semibold mt-4 mb-2">Conservative Low-Risk</h3>
+                    <p class="text-sm text-gray-600 dark:text-gray-400">For steady, long-term growth with minimal risk.</p>
+                    <button data-type="conservative" class="learn-more-btn mt-4 p-2 w-full rounded-xl bg-blue-500 text-white font-semibold shadow-md hover:bg-blue-600 transition-colors">Learn More</button>
+                </div>
+
+                <!-- Balanced Portfolio Card -->
+                <div class="p-6 rounded-xl border border-gray-200 dark:border-gray-700 flex flex-col items-center text-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-scale"><path d="m3 3 7 12h4l-7-12z"/><path d="m14 13 4 4"/><path d="m7 7 4 4z"/><path d="m20 20 4 4z"/></svg>
+                    <h3 class="text-xl font-semibold mt-4 mb-2">Balanced Portfolio</h3>
+                    <p class="text-sm text-gray-600 dark:text-gray-400">Balanced risk and return. Perfect for long-term growth.</p>
+                    <button data-type="balanced" class="learn-more-btn mt-4 p-2 w-full rounded-xl bg-blue-500 text-white font-semibold shadow-md hover:bg-blue-600 transition-colors">Learn More</button>
+                </div>
+
+                <!-- Aggressive Portfolio Card -->
+                <div class="p-6 rounded-xl border border-gray-200 dark:border-gray-700 flex flex-col items-center text-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-zap"><path d="m13 2-3 8-6 6 15 6 3-8-6-6z"/></svg>
+                    <h3 class="text-xl font-semibold mt-4 mb-2">Aggressive High-Yield</h3>
+                    <p class="text-sm text-gray-600 dark:text-gray-400">High yield for maximum returns on your capital.</p>
+                    <button data-type="aggressive" class="learn-more-btn mt-4 p-2 w-full rounded-xl bg-blue-500 text-white font-semibold shadow-md hover:bg-blue-600 transition-colors">Learn More</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="contact-page" class="page hidden p-8 text-center bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-lg mx-auto">
+            <h2 class="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-500 to-blue-500 mb-4">Contact Us</h2>
+            <p class="text-lg text-gray-700 dark:text-gray-300">We're here to help. Reach out to our support team for any assistance.</p>
+            <div class="mt-6">
+                <img src="https://placehold.co/400x200/9fa8da/3f51b5?text=Customer+Support" alt="Contact Placeholder" class="rounded-xl mx-auto shadow-md">
+            </div>
+        </div>
+
+        <div id="payment-page" class="page hidden p-8 text-center bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-lg mx-auto">
+            <h2 class="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-500 to-blue-500 mb-4">Payments</h2>
+            <p class="text-lg text-gray-700 dark:text-gray-300">Securely make payments and transfers. A simple way to manage your funds.</p>
+            <div class="mt-6">
+                <img src="https://placehold.co/400x200/a5d6a7/4caf50?text=Payment+Options" alt="Payment Placeholder" class="rounded-xl mx-auto shadow-md">
+            </div>
+        </div>
+
+        <!-- Custom Dialog Box -->
+        <div id="dialog-box" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4">
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-2xl max-w-sm w-full space-y-4">
+                <div class="flex justify-between items-center">
+                    <h3 id="dialog-title" class="text-xl font-bold text-gray-900 dark:text-gray-50">Alert</h3>
+                    <button id="dialog-close-btn" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">&times;</button>
+                </div>
+                <p id="dialog-message" class="text-gray-600 dark:text-gray-300"></p>
+                <button id="dialog-ok-btn" class="w-full p-3 rounded-xl bg-blue-500 text-white font-bold hover:bg-blue-600 transition">OK</button>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const descriptionInput = document.getElementById('description-input');
+        const amountInput = document.getElementById('amount-input');
+        const incomeBtn = document.getElementById('income-btn');
+        const expenseBtn = document.getElementById('expense-btn');
+        const transactionsList = document.getElementById('transactions-list');
+        const balanceAmount = document.getElementById('balance-amount');
+        const incomeAmount = document.getElementById('income-amount');
+        const expenseAmount = document.getElementById('expense-amount');
+
+        const sideMenu = document.getElementById('side-menu');
+        const openMenuBtn = document.getElementById('open-menu-btn');
+        const closeMenuBtn = document.getElementById('close-menu-btn');
+        const menuButtons = document.querySelectorAll('.menu-btn');
+        const pages = document.querySelectorAll('.page');
+        const learnMoreButtons = document.querySelectorAll('.learn-more-btn');
+
+        const dialogBox = document.getElementById('dialog-box');
+        const dialogTitle = document.getElementById('dialog-title');
+        const dialogMessage = document.getElementById('dialog-message');
+        const dialogCloseBtn = document.getElementById('dialog-close-btn');
+        const dialogOkBtn = document.getElementById('dialog-ok-btn');
+
+        let transactions = [];
+
+        // Dialog Content for "Learn More" buttons
+        const dialogContent = {
+            conservative: {
+                title: "Conservative Portfolio",
+                message: "A conservative portfolio focuses on capital preservation and generating modest, consistent returns. It is ideal for investors with a low tolerance for risk and a long-term financial horizon. This strategy typically includes a high percentage of low-risk assets like government bonds and cash equivalents."
+            },
+            balanced: {
+                title: "Balanced Portfolio",
+                message: "A balanced portfolio aims for a mix of capital growth and income. It's designed for investors with a moderate risk tolerance, balancing the stability of fixed-income securities with the growth potential of stocks. It represents a middle ground between conservative and aggressive strategies."
+            },
+            aggressive: {
+                title: "Aggressive Portfolio",
+                message: "An aggressive portfolio seeks to maximize returns by taking on higher risk. It is suited for investors with a high risk tolerance and a long investment horizon, who are comfortable with significant market fluctuations. This portfolio is heavily weighted toward high-growth assets such as stocks and emerging market investments."
+            },
+            alert: {
+                title: "Alert",
+                message: "Please enter a valid description and a positive amount."
+            }
+        };
+
+        // --- Menu and Page Switching Logic ---
+        function openMenu() {
+            sideMenu.classList.remove('-translate-x-full');
+            sideMenu.classList.add('translate-x-0');
+        }
+
+        function closeMenu() {
+            sideMenu.classList.remove('translate-x-0');
+            sideMenu.classList.add('-translate-x-full');
+        }
+
+        function showPage(pageId) {
+            pages.forEach(page => {
+                page.classList.add('hidden');
+            });
+            document.getElementById(pageId).classList.remove('hidden');
+
+            menuButtons.forEach(btn => {
+                btn.classList.remove('active-menu-link');
+                btn.classList.remove('bg-gray-100', 'dark:bg-gray-700');
+            });
+
+            const activeButton = document.getElementById(pageId + '-btn');
+            if (activeButton) {
+                activeButton.classList.add('active-menu-link');
+                activeButton.classList.add('bg-gray-100', 'dark:bg-gray-700');
+            }
+            closeMenu();
+        }
+
+        // --- Dialog Functions ---
+        function showDialog(type) {
+            const content = dialogContent[type];
+            dialogTitle.textContent = content.title;
+            dialogMessage.textContent = content.message;
+            dialogBox.classList.remove('hidden');
+        }
+
+        function closeDialog() {
+            dialogBox.classList.add('hidden');
+        }
+
+        // --- Core App Logic (Transactions) ---
+        function saveTransactions() {
+            localStorage.setItem('transactions', JSON.stringify(transactions));
+        }
+
+        function loadTransactions() {
+            const savedTransactions = JSON.parse(localStorage.getItem('transactions') || '[]');
+            transactions = savedTransactions;
+            renderTransactions();
+            updateSummary();
+        }
+
+        function updateSummary() {
+            let totalIncome = 0;
+            let totalExpense = 0;
+            transactions.forEach(transaction => {
+                if (transaction.type === 'income') {
+                    totalIncome += transaction.amount;
+                } else {
+                    totalExpense += transaction.amount;
+                }
+            });
+            const balance = totalIncome - totalExpense;
+            balanceAmount.textContent = `$${balance.toFixed(2)}`;
+            incomeAmount.textContent = `$${totalIncome.toFixed(2)}`;
+            expenseAmount.textContent = `$${totalExpense.toFixed(2)}`;
+        }
+
+        function renderTransactions() {
+            transactionsList.innerHTML = '';
+            if (transactions.length === 0) {
+                const emptyMessage = document.createElement('li');
+                emptyMessage.className = 'text-center text-gray-500 dark:text-gray-400 p-4';
+                emptyMessage.textContent = 'No transactions yet.';
+                transactionsList.appendChild(emptyMessage);
+                return;
+            }
+            transactions.forEach((transaction, index) => {
+                const li = document.createElement('li');
+                li.className = `flex items-center justify-between p-4 rounded-xl shadow-sm ${
+                    transaction.type === 'income' ? 'bg-green-50 dark:bg-green-900/50 border-l-4 border-green-500' : 'bg-red-50 dark:bg-red-900/50 border-l-4 border-red-500'
+                }`;
+                const descriptionDiv = document.createElement('div');
+                descriptionDiv.className = 'flex-1';
+                descriptionDiv.innerHTML = `
+                    <p class="font-semibold">${transaction.description}</p>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">${new Date(transaction.timestamp).toLocaleDateString()}</p>
+                `;
+                const amountDiv = document.createElement('div');
+                amountDiv.className = `font-bold ${
+                    transaction.type === 'income' ? 'text-green-600 dark:text-green-300' : 'text-red-600 dark:text-red-300'
+                }`;
+                amountDiv.textContent = `${transaction.type === 'income' ? '+' : '-'}$${transaction.amount.toFixed(2)}`;
+                li.appendChild(descriptionDiv);
+                li.appendChild(amountDiv);
+                transactionsList.appendChild(li);
+            });
+        }
+
+        function addTransaction(type) {
+            const description = descriptionInput.value.trim();
+            const amount = parseFloat(amountInput.value);
+
+            if (description === '' || isNaN(amount) || amount <= 0) {
+                showDialog('alert');
+                return;
+            }
+
+            const newTransaction = {
+                description,
+                amount,
+                type,
+                timestamp: new Date().toISOString()
+            };
+
+            transactions.unshift(newTransaction);
+            saveTransactions();
+            renderTransactions();
+            updateSummary();
+
+            descriptionInput.value = '';
+            amountInput.value = '';
+        }
+
+        // --- Event Listeners ---
+        incomeBtn.addEventListener('click', () => addTransaction('income'));
+        expenseBtn.addEventListener('click', () => addTransaction('expense'));
+        openMenuBtn.addEventListener('click', openMenu);
+        closeMenuBtn.addEventListener('click', closeMenu);
+        dialogCloseBtn.addEventListener('click', closeDialog);
+        dialogOkBtn.addEventListener('click', closeDialog);
+        window.addEventListener('load', loadTransactions);
+
+        // Event listeners for page navigation
+        document.getElementById('transactions-page-btn').addEventListener('click', () => showPage('transactions-page'));
+        document.getElementById('save-page-btn').addEventListener('click', () => showPage('save-page'));
+        document.getElementById('buy-data-page-btn').addEventListener('click', () => showPage('buy-data-page'));
+        document.getElementById('invest-page-btn').addEventListener('click', () => showPage('invest-page'));
+        document.getElementById('service-page-btn').addEventListener('click', () => showPage('service-page'));
+        document.getElementById('contact-page-btn').addEventListener('click', () => showPage('contact-page'));
+        document.getElementById('payment-page-btn').addEventListener('click', () => showPage('payment-page'));
+
+        // Event listeners for Learn More buttons
+        learnMoreButtons.forEach(button => {
+            button.addEventListener('click', (e) => {
+                const type = e.target.dataset.type;
+                showDialog(type);
+            });
+        });
+
+    </script>
+</body>
+</html>
