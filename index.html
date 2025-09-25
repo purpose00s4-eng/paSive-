@@ -1,0 +1,945 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fintech App</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" xintegrity="sha512-zN7V77c/e8r97t5m0eLpC4p5T3w7mBvN2F0w5E5q7g5G1O4v0a6z3P7E1v8i5B5O1z2N2U8x6n7z8o5R5/g==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <style>
+      body {
+            font-family: 'Inter', sans-serif;
+      }
+      .page {
+        display: none;
+      }
+      .page.active {
+        display: block;
+      }
+      .side-menu {
+        transition: transform 0.3s ease-in-out;
+        transform: translateX(-100%);
+      }
+      .side-menu.active {
+        transform: translateX(0);
+      }
+      .overlay.active {
+        display: block;
+      }
+      .page-content.shifted {
+        transform: translateX(250px);
+      }
+      .custom-scrollbar::-webkit-scrollbar {
+          width: 8px;
+      }
+      .custom-scrollbar::-webkit-scrollbar-track {
+          background: #e5e7eb;
+          border-radius: 10px;
+      }
+      .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: #9ca3af;
+          border-radius: 10px;
+      }
+      .active-menu-link {
+          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      }
+      .typing-cursor {
+          animation: blink 1s step-end infinite;
+          font-weight: 300;
+      }
+      @keyframes blink {
+          from, to { visibility: hidden; }
+          50% { visibility: visible; }
+      }
+      .animate-jump-and-squish {
+          animation: jump-and-squish 1.5s infinite;
+      }
+      @keyframes jump-and-squish {
+          0% { transform: scale(1, 1) translateY(0); }
+          15% { transform: scale(1.2, 0.8) translateY(0); }
+          30% { transform: scale(0.8, 1.2) translateY(-20px); }
+          50% { transform: scale(1.1, 0.9) translateY(0); }
+          70% { transform: scale(1, 1) translateY(0); }
+      }
+      .animate-bounce { animation: bounce 1s infinite; }
+      @keyframes bounce {
+        0%, 100% { transform: translateY(-25%); animation-timing-function: cubic-bezier(0.8, 0, 1, 1); }
+        50% { transform: translateY(0); animation-timing-function: cubic-bezier(0, 0, 0.2, 1); }
+      }
+      .animate-tada { animation: tada 1s infinite; }
+      @keyframes tada {
+          from { transform: scale3d(1, 1, 1); }
+          10%, 20% { transform: scale3d(.9, .9, .9) rotate3d(0, 0, 1, -3deg); }
+          30%, 50%, 70%, 90% { transform: scale3d(1.1, 1.1, 1.1) rotate3d(0, 0, 1, 3deg); }
+          40%, 60%, 80% { transform: scale3d(1.1, 1.1, 1.1) rotate3d(0, 0, 1, -3deg); }
+          to { transform: scale3d(1, 1, 1); }
+      }
+      .animate-wobble { animation: wobble 1s infinite; }
+      @keyframes wobble {
+          from { transform: translate3d(0, 0, 0); }
+          15% { transform: translate3d(-25%, 0, 0) rotate3d(0, 0, 1, -5deg); }
+          30% { transform: translate3d(20%, 0, 0) rotate3d(0, 0, 1, 3deg); }
+          45% { transform: translate3d(-15%, 0, 0) rotate3d(0, 0, 1, -3deg); }
+          60% { transform: translate3d(10%, 0, 0) rotate3d(0, 0, 1, 2deg); }
+          75% { transform: translate3d(-5%, 0, 0) rotate3d(0, 0, 1, -1deg); }
+          to { transform: translate3d(0, 0, 0); }
+      }
+      .animate-fade-in-slow {
+          animation: fade-in 1.5s ease-out forwards;
+      }
+      @keyframes fade-in {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+      }
+      .animate-pop-in-slow {
+          animation: pop-in 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+      }
+      @keyframes pop-in {
+          0% { transform: scale(0.8); opacity: 0; }
+          100% { transform: scale(1); opacity: 1; }
+      }
+      .shadow-input-focus {
+          box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.5);
+      }
+      .toast {
+          position: fixed;
+          top: 20px;
+          right: 20px;
+          z-index: 1000;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 16px;
+          border-radius: 12px;
+          color: #fff;
+          opacity: 0;
+          transform: translateY(-20px);
+          transition: opacity 0.3s ease-out, transform 0.3s ease-out;
+      }
+      .toast.visible {
+          opacity: 1;
+          transform: translateY(0);
+      }
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-50 flex min-h-screen">
+
+    <!-- Mobile Menu Button -->
+    <button id="menu-button" class="fixed top-4 left-4 z-50 p-2 rounded-xl bg-gray-800 shadow-md md:hidden">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
+    </button>
+
+    <!-- Side Menu -->
+    <aside id="side-menu" class="fixed inset-y-0 left-0 transform -translate-x-full md:relative md:translate-x-0 transition-transform duration-300 ease-in-out bg-white dark:bg-gray-800 w-64 p-6 flex flex-col shadow-lg z-50">
+        <div class="flex items-center justify-between mb-8">
+            <h2 class="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-500 to-blue-500">Menu</h2>
+            <button id="close-menu-btn" class="text-gray-500 md:hidden">&times;</button>
+        </div>
+        <nav class="space-y-2">
+            <a href="#transactions" id="transactions-page-btn" class="menu-btn flex items-center space-x-3 p-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors font-semibold active-menu-link">
+                <!-- SVG Icon for Transactions -->
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-wallet"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M10 9a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2h0a2 2 0 0 1-2-2z"/></svg>
+                <span>Transactions</span>
+            </a>
+            <a href="#save" id="save-page-btn" class="menu-btn flex items-center space-x-3 p-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors font-semibold">
+                <!-- SVG Icon for Save -->
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-piggy-bank"><path d="M16 2h2a2 2 0 0 1 2 2v7.942a2 2 0 0 1-.581 1.41l-3.323 3.324A3 3 0 0 1 14 18H5a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h11z"/><path d="M20 18v2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-2"/><path d="M11 11a1 1 0 1 0 0-2 1 1 0 0 0 0 2z"/></svg>
+                <span>Save</span>
+            </a>
+            <a href="#buy-data" id="buy-data-page-btn" class="menu-btn flex items-center space-x-3 p-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors font-semibold">
+                <!-- SVG Icon for Data -->
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-cloud-data"><path d="M22 17a5 5 0 0 0-5-5H8a5 5 0 0 0-4.32 7.5L5 20h11"/><path d="M17 12a5 5 0 0 0-5-5h-1"/><path d="M12 2a5 5 0 0 0-4.5 3h1.36a3 3 0 0 1 0 6H12a3 3 0 0 1 0-6h1.36A5 5 0 0 0 12 2z"/></svg>
+                <span>Buy Data</span>
+            </a>
+            <a href="#invest" id="invest-page-btn" class="menu-btn flex items-center space-x-3 p-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors font-semibold">
+                <!-- SVG Icon for Invest -->
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-line-chart"><path d="M3 3v18h18"/><path d="M18.7 8.3c-2.3 2.3-4.3 2.6-5.4 1.1-.3-.3-.7-.5-.9-.6-.2-.1-.5-.2-.8-.2-.3-.1-.7 0-1.1.2s-.7.6-.9.9c-.2.3-.3.6-.3.9a1.6 1.6 0 0 1-.2 1.2c-.3 1-.8 1.9-1.5 2.5-1.1.8-2.3.9-3.2.7"/><path d="m14 13 4 4"/></svg>
+                <span>Invest</span>
+            </a>
+            <a href="#services" id="services-page-btn" class="menu-btn flex items-center space-x-3 p-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors font-semibold">
+                <!-- SVG Icon for Service -->
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-headset"><path d="M17 19v-6a5 5 0 0 0-5-5H7a5 5 0 0 0-5 5v6a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2v-2a2 2 0 0 0-2-2H4"/><path d="M12 17v-2a4 4 0 0 1 4-4h2a4 4 0 0 1 4 4v2a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2z"/></svg>
+                <span>Services</span>
+            </a>
+            <a href="#contact" id="contact-page-btn" class="menu-btn flex items-center space-x-3 p-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors font-semibold">
+                <!-- SVG Icon for Contact -->
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-mail"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-10 7L2 7"/></svg>
+                <span>Contact</span>
+            </a>
+            <a href="#payment" id="payment-page-btn" class="menu-btn flex items-center space-x-3 p-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors font-semibold">
+                <!-- SVG Icon for Payment -->
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-credit-card"><rect width="20" height="14" x="2" y="5" rx="2"/><path d="M2 10h20"/><path d="M7 15h3"/><path d="M7 19h5"/></svg>
+                <span>Payment</span>
+            </a>
+        </nav>
+    </aside>
+
+    <!-- Overlay for mobile menu -->
+    <div id="overlay" class="overlay fixed inset-0 bg-black bg-opacity-50 z-30 hidden md:hidden"></div>
+
+    <!-- Main Content Area -->
+    <main id="main-content" class="page-content md:ml-64 p-6 transition-transform duration-300">
+        <!-- Main Fintech Tracker Page -->
+        <section id="transactions" class="page active">
+            <div class="bg-gray-800 rounded-3xl shadow-xl p-6 sm:p-10 mb-8">
+                <h1 class="text-3xl font-bold text-gray-50 mb-2">My Transactions</h1>
+                <p class="text-gray-400 mb-6">Track your income and expenses here.</p>
+                <!-- Balance Display -->
+                <div class="bg-blue-600 text-gray-50 rounded-2xl p-6 mb-6">
+                    <p class="text-lg font-semibold">Current Balance</p>
+                    <p id="balance-display" class="text-4xl font-extrabold mt-1">$0.00</p>
+                </div>
+                <!-- Add Transaction Form -->
+                <div class="space-y-4">
+                    <input id="description-input" type="text" placeholder="Description" class="w-full px-4 py-3 rounded-xl border border-gray-700 bg-gray-900 text-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200" required>
+                    <input id="amount-input" type="number" placeholder="Amount" class="w-full px-4 py-3 rounded-xl border border-gray-700 bg-gray-900 text-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200" required>
+                    <select id="type-select" class="w-full px-4 py-3 rounded-xl border border-gray-700 bg-gray-900 text-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200">
+                        <option value="income">Income</option>
+                        <option value="expense">Expense</option>
+                    </select>
+                    <button id="add-transaction-btn" class="w-full bg-blue-600 text-gray-50 font-bold py-3 rounded-xl hover:bg-blue-700 transition-colors duration-300 shadow-lg">
+                        Add Transaction
+                    </button>
+                </div>
+            </div>
+            <!-- Transactions List -->
+            <div class="bg-gray-800 rounded-3xl shadow-xl p-6 sm:p-10">
+                <h2 class="text-2xl font-bold text-gray-50 mb-4">Transaction History</h2>
+                <ul id="transactions-list" class="space-y-4">
+                    <!-- Transactions will be added here -->
+                </ul>
+            </div>
+        </section>
+
+        <!-- Save Page -->
+        <section id="save" class="page">
+            <div class="bg-gray-800 rounded-3xl shadow-xl p-6 sm:p-10">
+                <h1 class="text-3xl font-bold text-gray-50 mb-4">Savings Goals</h1>
+                <p class="text-gray-400">Set and track your savings for a secure future.</p>
+            </div>
+        </section>
+
+        <!-- Buy Data Page -->
+        <section id="buy-data" class="page">
+            <div class="bg-gray-800 rounded-3xl shadow-xl p-6 sm:p-10">
+                <h1 class="text-3xl font-bold text-gray-50 mb-4">Buy Data</h1>
+                <p class="text-gray-400">Purchase data plans directly from your account.</p>
+            </div>
+        </section>
+
+        <!-- Invest Page -->
+        <section id="invest" class="page">
+          <div class="container max-w-4xl py-12 md:py-24 px-4">
+            <div class="bg-gray-800 rounded-3xl shadow-xl p-6 sm:p-8 max-w-md mx-auto">
+                <div class="text-center">
+                    <h1 id="invest-greeting" class="text-lg font-bold min-h-[40px] text-gray-50 transition-colors duration-200">
+                        <span id="greeting-text"></span><span id="typing-cursor" class="typing-cursor">|</span>
+                    </h1>
+                    <div id="suggestion-prompt" class="mt-2 space-y-2 animate-fade-in-slow hidden">
+                        <p class="text-sm text-gray-400">Do you need a suggestion?</p>
+                        <div class="flex justify-center gap-2">
+                            <button id="suggestion-yes-btn" class="px-4 py-2 rounded-lg text-sm font-semibold bg-gray-700 hover:bg-gray-600 transition-colors">Yes</button>
+                            <button id="suggestion-no-btn" class="px-4 py-2 rounded-lg text-sm font-semibold bg-gray-700 hover:bg-gray-600 transition-colors">No</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="space-y-4 mt-8">
+                    <div class="space-y-2">
+                        <div class="flex items-center gap-2">
+                            <label for="invest-amount" class="text-gray-400 font-medium">Amount</label>
+                            <span id="typing-emoji" class="text-2xl hidden"></span>
+                        </div>
+                        <div class="flex gap-2">
+                            <div class="relative flex-1">
+                                <span id="currency-symbol" class="absolute inset-y-0 left-3 flex items-center text-gray-500"></span>
+                                <input
+                                    id="invest-amount"
+                                    type="number"
+                                    placeholder="e.g., 50000"
+                                    class="w-full pl-7 pr-4 py-2 rounded-xl border border-gray-700 bg-gray-900 text-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
+                                    required
+                                >
+                            </div>
+                            <select id="currency-select" class="px-4 py-2 rounded-xl border border-gray-700 bg-gray-900 text-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200">
+                                <option value="NGN">NGN</option>
+                                <option value="USD">USD</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="relative">
+                        <button id="invest-now-btn" class="w-full h-11 px-8 rounded-lg select-none bg-neutral-300 text-neutral-800 border-b-4 border-neutral-400/80 dark:bg-neutral-700 dark:text-neutral-200 dark:border-neutral-800/80 shadow-[0_2px_4px_rgba(0,0,0,0.4),_inset_0_-3px_0_rgba(0,0,0,0.2)] dark:shadow-[0_2px_4px_rgba(0,0,0,0.6),_inset_0_-3px_0_rgba(0,0,0,0.4)] transition-all duration-200 ease-in-out hover:brightness-105 active:translate-y-2 active:shadow-[0_0px_2px_rgba(0,0,0,0.6),_inset_0_0px_0_rgba(0,0,0,0.2)]">
+                            Invest Now
+                            <svg xmlns="http://www.w3.org/2000/svg" class="inline ml-2 h-4 w-4" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                        </button>
+                        <div id="payment-options" class="absolute left-0 right-0 top-full mt-2 w-full animate-pop-in-slow z-10 bg-gray-800 rounded-xl shadow-xl p-4 hidden">
+                            <div class="flex items-center justify-between pb-2 mb-2">
+                                <h3 class="text-base font-semibold">Select Payment Method</h3>
+                                <button id="close-payment-options" class="text-gray-400 hover:text-gray-200">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                                </button>
+                            </div>
+                            <div class="flex flex-col gap-2">
+                                <button id="pay-with-card-btn" class="w-full py-2 rounded-lg text-sm font-semibold bg-gray-700 hover:bg-gray-600 transition-colors">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="inline mr-2 h-4 w-4" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="5" rx="2"/><path d="M2 10h20"/><path d="M7 15h3"/><path d="M7 19h5"/></svg>
+                                    Pay with Card
+                                </button>
+                                <button id="pay-with-bank-btn" class="w-full py-2 rounded-lg text-sm font-semibold bg-gray-700 hover:bg-gray-600 transition-colors">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="inline mr-2 h-4 w-4" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 22h18"/><path d="M3 11l9-7 9 7"/><path d="M4 11v9"/><path d="M20 11v9"/><path d="M12 22v-9"/><path d="M8 22v-9"/><path d="M16 22v-9"/></svg>
+                                    Bank Transfer
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Bank Transfer Modal -->
+            <div id="bank-transfer-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+                <div class="bg-gray-800 rounded-3xl p-8 max-w-lg w-full mx-4 shadow-2xl relative animate-pop-in-slow">
+                    <button id="close-bank-modal" class="absolute top-4 right-4 text-gray-400 hover:text-gray-200">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                    </button>
+                    <h2 class="text-2xl font-bold text-gray-50 mb-2 flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-landmark"><line x1="12" x2="12" y1="17" y2="22"/><path d="M12 17a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2v-2h-6"/><path d="M12 17a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2v-2h6"/><path d="M4 14h16"/><path d="M8 14V7a4 4 0 0 1 8 0v7"/><path d="M15 14v5a3 3 0 0 1-3 3H9a3 3 0 0 1-3-3v-5"/></svg>
+                        Bank Transfer
+                    </h2>
+                    <p class="text-gray-400 mb-6">Use the details below to complete your investment.</p>
+                    <div class="grid md:grid-cols-2 gap-6">
+                        <div class="space-y-4">
+                            <div class="bg-gray-700 p-6 rounded-xl shadow-md">
+                                <p class="text-sm font-medium text-gray-400">Amount to Transfer</p>
+                                <p id="bank-transfer-amount" class="text-3xl font-bold text-blue-400 mt-1"></p>
+                            </div>
+                             <div class="bg-gray-700 p-6 rounded-xl shadow-md space-y-4">
+                                <div class="space-y-1">
+                                    <p class="text-xs font-medium text-gray-400">Bank Name</p>
+                                    <p class="text-base font-semibold">Sterling Bank</p>
+                                </div>
+                                <div class="space-y-1">
+                                    <p class="text-xs font-medium text-gray-400">Account Name</p>
+                                    <p class="text-base font-semibold">paSive Financial</p>
+                                </div>
+                                <div class="space-y-1">
+                                    <p class="text-xs font-medium text-gray-400">Account Number</p>
+                                    <div class="flex items-center justify-between">
+                                        <p id="bank-account-number" class="text-lg font-semibold font-mono tracking-wider">0123456789</p>
+                                        <button id="copy-bank-details-btn" class="text-gray-400 hover:text-gray-200 p-2">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex flex-col items-center justify-center space-y-2 bg-gray-700/50 rounded-lg border border-gray-600/50 p-4">
+                            <p class="text-sm text-gray-400">Scan to pay</p>
+                            <div class="bg-white p-2 rounded-md">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-24 w-24 text-black" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-qr-code"><rect width="8" height="8" x="2" y="2" rx="2"/><path d="M6 16v.01"/><path d="M10 16v.01"/><path d="M14 16v.01"/><path d="M18 16v.01"/><path d="M6 20v.01"/><path d="M10 20v.01"/><path d="M14 20v.01"/><path d="M18 20v.01"/><rect width="8" height="8" x="14" y="2" rx="2"/><path d="M18 10h-2"/><rect width="8" height="8" x="2" y="14" rx="2"/><path d="M10 18h-2"/></svg>
+                            </div>
+                            <p class="text-xs text-gray-400 text-center">Use your banking app to scan</p>
+                            <button id="confirm-transfer-btn" class="w-full py-2 rounded-lg text-sm font-semibold bg-blue-600 hover:bg-blue-700 transition-colors duration-300 shadow-lg mt-4">I have made the transfer</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Services Page -->
+        <section id="services" class="page">
+          <div class="bg-gray-800 rounded-3xl shadow-xl p-6 sm:p-10">
+            <h1 class="text-3xl font-bold text-gray-50 mb-4">Our Services</h1>
+            <p class="text-gray-400 mb-6">Explore our tailored investment plans designed for your financial goals.</p>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Conservative Portfolio -->
+                <div class="bg-gray-700 rounded-2xl p-6 text-center shadow-sm">
+                    <h3 class="text-xl font-bold text-gray-50 mb-2">Conservative Low-Risk</h3>
+                    <p class="text-gray-400 mb-4">For steady, long-term growth with minimal risk.</p>
+                    <button class="learn-more-btn bg-blue-600 text-gray-50 font-bold py-2 px-6 rounded-xl hover:bg-blue-700 transition-colors duration-300" data-portfolio="conservative">Learn More</button>
+                </div>
+                <!-- Balanced Portfolio -->
+                <div class="bg-gray-700 rounded-2xl p-6 text-center shadow-sm">
+                    <h3 class="text-xl font-bold text-gray-50 mb-2">Balanced Portfolio</h3>
+                    <p class="text-gray-400 mb-4">Balanced risk and return. Perfect for long-term growth.</p>
+                    <button class="learn-more-btn bg-blue-600 text-gray-50 font-bold py-2 px-6 rounded-xl hover:bg-blue-700 transition-colors duration-300" data-portfolio="balanced">Learn More</button>
+                </div>
+                <!-- Aggressive Portfolio -->
+                <div class="bg-gray-700 rounded-2xl p-6 text-center shadow-sm">
+                    <h3 class="text-xl font-bold text-gray-50 mb-2">Aggressive High-Yield</h3>
+                    <p class="text-gray-400 mb-4">High yield for maximum returns on your capital.</p>
+                    <button class="learn-more-btn bg-blue-600 text-gray-50 font-bold py-2 px-6 rounded-xl hover:bg-blue-700 transition-colors duration-300" data-portfolio="aggressive">Learn More</button>
+                </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Contact Page -->
+        <section id="contact" class="page">
+          <div class="bg-gray-800 rounded-3xl shadow-xl w-full p-6 sm:p-10 transition-all duration-300">
+            <!-- Header Section -->
+            <header class="text-center mb-10">
+              <h1 class="text-4xl sm:text-5xl font-extrabold text-gray-50 mb-2">Contact Our Experts</h1>
+              <p class="text-lg text-gray-400 max-w-2xl mx-auto">Have a question or want to discuss your investment options? We're here to help.</p>
+            </header>
+            <!-- Contact Options & Form -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
+              <!-- Get in Touch -->
+              <section class="bg-gray-700 p-6 sm:p-8 rounded-2xl border border-gray-600">
+                <h2 class="text-2xl font-bold text-gray-50 mb-4">Get in Touch</h2>
+                <div class="space-y-6">
+                  <!-- WhatsApp -->
+                  <div class="flex items-center space-x-4">
+                    <div class="flex-shrink-0 w-12 h-12 bg-gray-600 text-green-400 rounded-full flex items-center justify-center">
+                      <i class="fab fa-whatsapp text-xl"></i>
+                    </div>
+                    <div>
+                      <h3 class="font-semibold text-gray-50">Whatsapp</h3>
+                      <p class="text-blue-300 font-medium">09065650865</p>
+                    </div>
+                  </div>
+                  <!-- Twitter -->
+                  <div class="flex items-center space-x-4">
+                    <div class="flex-shrink-0 w-12 h-12 bg-gray-600 text-blue-400 rounded-full flex items-center justify-center">
+                      <i class="fab fa-twitter text-xl"></i>
+                    </div>
+                  </div>
+                </div>
+              </section>
+              <!-- Send a Message -->
+              <section class="bg-gray-700 p-6 sm:p-8 rounded-2xl border border-gray-600">
+                <h2 class="text-2xl font-bold text-gray-50 mb-4">Send a Message</h2>
+                <p class="text-gray-400 mb-6">Fill out the form and we'll get back to you</p>
+                <form class="space-y-6">
+                  <!-- Name Input -->
+                  <div>
+                    <label for="name" class="block text-sm font-medium text-gray-300">Name</label>
+                    <input type="text" id="name" name="name" placeholder="Your Name" class="mt-1 block w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-50">
+                  </div>
+                  <!-- Email Input -->
+                  <div>
+                    <label for="email" class="block text-sm font-medium text-gray-300">Email</label>
+                    <input type="email" id="email" name="email" placeholder="your.email@example.com" class="mt-1 block w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-50">
+                  </div>
+                  <!-- Question Textarea -->
+                  <div>
+                    <label for="question" class="block text-sm font-medium text-gray-300">Your Question</label>
+                    <textarea id="question" name="question" rows="4" placeholder="Ask us about our investment plans..." class="mt-1 block w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-50"></textarea>
+                  </div>
+                  <!-- Submit Button -->
+                  <button type="submit" class="w-full bg-blue-600 text-gray-50 font-bold py-3 px-6 rounded-xl hover:bg-blue-700 transition-colors duration-300 shadow-lg">
+                      Send Message
+                  </button>
+                </form>
+              </section>
+            </div>
+          </div>
+        </section>
+
+        <!-- Payment Page -->
+        <section id="payment" class="page">
+          <div class="bg-gray-800 rounded-3xl shadow-xl p-6 sm:p-10">
+            <h1 class="text-3xl font-bold text-gray-50 mb-4">Payment Options</h1>
+            <p class="text-gray-400">Explore different ways to fund your account and make transactions.</p>
+          </div>
+        </section>
+
+    </main>
+
+    <!-- Modal for Learn More -->
+    <div id="modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-gray-800 text-gray-50 rounded-3xl p-8 max-w-lg mx-4 shadow-2xl relative">
+            <button id="close-modal-btn" class="absolute top-4 right-4 text-gray-400 hover:text-gray-50">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+            <h2 id="modal-title" class="text-2xl font-bold mb-4"></h2>
+            <p id="modal-content" class="text-gray-400"></p>
+        </div>
+    </div>
+    
+    <!-- Custom Toast Notification -->
+    <div id="toast-container"></div>
+    
+    <script>
+        const initialGreetings = [
+            "Let's get your investment journey started. What's your first step?",
+            "Welcome! How much would you like to invest today?",
+            "Ready to grow your wealth? Enter an amount to begin.",
+            "Your financial future is in your hands. How much will you invest?",
+            "Hello! What amount are you considering for your investment?",
+            "Let's make your money work for you. How much to start?",
+            "Welcome aboard! Time to make an investment.",
+            "Start building your portfolio. What's today's investment?",
+            "Investing is a marathon, not a sprint. Let's take the first step.",
+            "Ready to invest? Let's begin with the amount.",
+            "A journey of a thousand miles begins with a single step. And an investment.",
+            "Welcome to the future of finance. How much are you investing?",
+            "Let's put your capital to work. Specify your investment amount.",
+            "Time to invest in your dreams. What's the amount?",
+            "Let's start investing. How much would you like to allocate?",
+            "Your investment journey starts now. Enter an amount.",
+            "Welcome! Ready to make a smart move? How much?",
+            "It's a great day to invest. What's your starting amount?",
+            "Let's begin. How much are you setting aside for investment?",
+            "Hello! What is the investment amount you have in mind?",
+        ];
+
+        const returnGreetings = [
+            "Do you want to plant more growth?",
+            "Welcome back! Ready to make another smart investment?",
+            "Building on your success? Let's add to your portfolio.",
+            "Great to see you again! Feel like investing more?",
+            "Your financial garden is growing. Time to plant another seed?",
+        ];
+
+        const errorGreetings = [
+            "It seems you forgot to write the amount.",
+            "Please enter an amount to invest.",
+            "An amount is required to proceed.",
+            "Looks like the amount is missing.",
+            "Kindly enter an investment amount to proceed.",
+        ];
+
+        const successGreetings = [
+            { emoji: "😊", text: "You've taken a step towards <span class='text-green-400'>financial growth</span> today!" },
+            { emoji: "🎉", text: "Great move! You're building a stronger <span class='text-green-400'>financial future</span>." },
+            { emoji: "🚀", text: "Excellent! Your investment is a launchpad for <span class='text-green-400'>future wealth</span>." },
+            { emoji: "🌟", text: "Well done! You're on the path to achieving your <span class='text-green-400'>financial goals</span>." },
+        ];
+
+        const typingEmojis = ["👍", "💪", "✨", "💰"];
+        const typingAnimations = ["animate-jump-and-squish", "animate-bounce", "animate-tada", "animate-wobble"];
+
+        const bankAccountNumber = "0123456789";
+
+        let transactions = JSON.parse(localStorage.getItem('transactions')) || [];
+        let balance = 0;
+
+        function updateBalanceAndTransactionsList() {
+            balance = transactions.reduce((total, transaction) => {
+                const amount = parseFloat(transaction.amount.replace(/[^0-9.-]+/g, ""));
+                return total + amount;
+            }, 0);
+            
+            const balanceDisplay = document.getElementById('balance-display');
+            if (balanceDisplay) {
+                balanceDisplay.textContent = `$${balance.toFixed(2)}`;
+            }
+
+            const transactionsList = document.getElementById('transactions-list');
+            if (transactionsList) {
+                transactionsList.innerHTML = '';
+                transactions.forEach(t => {
+                    const transactionElement = document.createElement('li');
+                    transactionElement.className = 'flex items-center justify-between p-4 bg-gray-700 rounded-xl shadow-sm';
+                    const amountColor = (t.amount.startsWith('+') || t.amount.includes('Income')) ? 'text-green-400' : 'text-red-400';
+                    const amountText = t.amount;
+                    const descriptionText = t.description;
+
+                    transactionElement.innerHTML = `
+                        <span class="text-gray-50 font-medium">${descriptionText}</span>
+                        <span class="${amountColor} font-bold">${amountText}</span>
+                    `;
+                    transactionsList.appendChild(transactionElement);
+                });
+            }
+        }
+        
+        function saveTransactions() {
+            localStorage.setItem('transactions', JSON.stringify(transactions));
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const menuButton = document.getElementById('menu-button');
+            const closeMenuBtn = document.getElementById('close-menu-btn');
+            const sideMenu = document.getElementById('side-menu');
+            const overlay = document.getElementById('overlay');
+            const pages = document.querySelectorAll('.page');
+            const menuBtns = document.querySelectorAll('.menu-btn');
+            const modal = document.getElementById('modal');
+            const closeModalBtn = document.getElementById('close-modal-btn');
+            const modalTitle = document.getElementById('modal-title');
+            const modalContent = document.getElementById('modal-content');
+            const learnMoreBtns = document.querySelectorAll('.learn-more-btn');
+            
+            // Handle side menu toggle
+            const toggleMenu = () => {
+                sideMenu.classList.toggle('-translate-x-full');
+                overlay.classList.toggle('hidden');
+            };
+
+            menuButton.addEventListener('click', toggleMenu);
+            closeMenuBtn.addEventListener('click', toggleMenu);
+            overlay.addEventListener('click', toggleMenu);
+
+            const showPage = (hash) => {
+                pages.forEach(page => {
+                    page.classList.remove('active');
+                });
+                const activePage = document.querySelector(hash);
+                if (activePage) {
+                    activePage.classList.add('active');
+                }
+                menuBtns.forEach(link => {
+                    link.classList.remove('active-menu-link');
+                });
+                const activeLink = document.querySelector(`.menu-btn[href="${hash}"]`);
+                if (activeLink) {
+                    activeLink.classList.add('active-menu-link');
+                }
+                if (window.innerWidth < 768) {
+                    toggleMenu();
+                }
+            };
+
+            const initialHash = window.location.hash || '#transactions';
+            showPage(initialHash);
+
+            menuBtns.forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const hash = e.currentTarget.getAttribute('href');
+                    window.location.hash = hash;
+                    showPage(hash);
+                });
+            });
+
+            window.addEventListener('hashchange', () => {
+                showPage(window.location.hash);
+            });
+            
+            // Transaction tracker logic
+            const descriptionInput = document.getElementById('description-input');
+            const amountInput = document.getElementById('amount-input');
+            const typeSelect = document.getElementById('type-select');
+            const addTransactionBtn = document.getElementById('add-transaction-btn');
+            
+            addTransactionBtn.addEventListener('click', () => {
+                const description = descriptionInput.value.trim();
+                const amount = parseFloat(amountInput.value);
+                const type = typeSelect.value;
+                const date = new Date().toISOString().split('T')[0];
+
+                if (description && !isNaN(amount) && amount !== 0) {
+                    const transactionAmount = (type === 'income' ? amount : -amount);
+                    const amountString = (type === 'income' ? '+' : '-') + `$${Math.abs(amount).toFixed(2)}`;
+
+                    transactions.push({ description, amount: amountString, date });
+                    saveTransactions();
+                    updateBalanceAndTransactionsList();
+
+                    descriptionInput.value = '';
+                    amountInput.value = '';
+                }
+            });
+
+            updateBalanceAndTransactionsList();
+
+            // Handle Learn More pop-ups
+            const portfolioDetails = {
+                conservative: {
+                    title: 'Conservative Low-Risk',
+                    content: 'This portfolio is designed for investors who prioritize capital preservation and stable, long-term returns. It primarily consists of low-risk assets like bonds, treasury bills, and high-quality dividend stocks.'
+                },
+                balanced: {
+                    title: 'Balanced Portfolio',
+                    content: 'A balanced portfolio seeks a middle ground between risk and reward. It combines a mix of stocks and fixed-income securities, aiming for steady growth while managing volatility. It is ideal for moderate-risk investors.'
+                },
+                aggressive: {
+                    title: 'Aggressive High-Yield',
+                    content: 'This strategy is for investors with a high-risk tolerance looking for maximum returns. It is heavily weighted towards high-growth assets such as technology stocks, emerging market funds, and other volatile securities.'
+                }
+            };
+
+            learnMoreBtns.forEach(button => {
+                button.addEventListener('click', (e) => {
+                    const portfolioType = e.target.dataset.portfolio;
+                    const details = portfolioDetails[portfolioType];
+                    if (details) {
+                        modalTitle.textContent = details.title;
+                        modalContent.textContent = details.content;
+                        modal.classList.remove('hidden');
+                    }
+                });
+            });
+
+            closeModalBtn.addEventListener('click', () => {
+                modal.classList.add('hidden');
+            });
+
+            window.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.classList.add('hidden');
+                }
+            });
+
+            // Payment page logic
+            const investAmountInput = document.getElementById('invest-amount');
+            const currencySelect = document.getElementById('currency-select');
+            const currencySymbolSpan = document.getElementById('currency-symbol');
+            const investNowBtn = document.getElementById('invest-now-btn');
+            const paymentOptionsDiv = document.getElementById('payment-options');
+            const closePaymentOptionsBtn = document.getElementById('close-payment-options');
+            const payWithCardBtn = document.getElementById('pay-with-card-btn');
+            const payWithBankBtn = document.getElementById('pay-with-bank-btn');
+            const bankTransferModal = document.getElementById('bank-transfer-modal');
+            const closeBankModalBtn = document.getElementById('close-bank-modal');
+            const bankTransferAmountP = document.getElementById('bank-transfer-amount');
+            const bankAccountNumberP = document.getElementById('bank-account-number');
+            const copyBankDetailsBtn = document.getElementById('copy-bank-details-btn');
+            const confirmTransferBtn = document.getElementById('confirm-transfer-btn');
+            const investGreetingSpan = document.getElementById('greeting-text');
+            const typingCursorSpan = document.getElementById('typing-cursor');
+            const typingEmojiSpan = document.getElementById('typing-emoji');
+            const suggestionPromptDiv = document.getElementById('suggestion-prompt');
+            const suggestionYesBtn = document.getElementById('suggestion-yes-btn');
+            const suggestionNoBtn = document.getElementById('suggestion-no-btn');
+
+            let currentGreeting = "";
+            let displayedGreeting = "";
+            let isTyping = true;
+            let isErrorActive = false;
+            let isGreetingPaused = false;
+            let showPostInvestmentMessage = false;
+            let postInvestmentMessage = { emoji: "", text: "" };
+            let hasInvestedToday = false;
+            let currentGreetingsArray = initialGreetings;
+            let typingTimeout;
+            let emojiAnimationClass = '';
+            
+            // Toast functionality
+            function showToast(title, description, isSuccess = false) {
+                const toastContainer = document.getElementById('toast-container');
+                const toast = document.createElement('div');
+                toast.className = `toast ${isSuccess ? 'bg-green-600' : 'bg-blue-600'} ${isSuccess ? 'dark:bg-green-700' : 'dark:bg-blue-700'}`;
+                toast.innerHTML = `
+                    <div class="flex-1">
+                        <h3 class="font-bold text-lg">${title}</h3>
+                        <p class="text-sm">${description}</p>
+                    </div>
+                `;
+                toastContainer.appendChild(toast);
+                
+                setTimeout(() => {
+                    toast.classList.add('visible');
+                }, 10);
+                
+                setTimeout(() => {
+                    toast.classList.remove('visible');
+                    setTimeout(() => toast.remove(), 300);
+                    if (isSuccess) {
+                        isGreetingPaused = false;
+                        showPostInvestmentMessage = true;
+                        updateTyping();
+                    }
+                }, 3000);
+            }
+
+            // Typing animation logic
+            const updateTyping = () => {
+                if (isGreetingPaused) {
+                    typingCursorSpan.style.display = 'none';
+                    return;
+                }
+                
+                typingCursorSpan.style.display = 'inline-block';
+
+                clearTimeout(typingTimeout);
+                
+                let fullGreeting = postInvestmentMessage.text ? postInvestmentMessage.text : currentGreeting;
+                const typingSpeed = isErrorActive ? 25 : (isTyping ? 50 : 15);
+
+                if (isTyping) {
+                    if (displayedGreeting.length < fullGreeting.length) {
+                        typingTimeout = setTimeout(() => {
+                            displayedGreeting = fullGreeting.slice(0, displayedGreeting.length + 1);
+                            investGreetingSpan.innerHTML = displayedGreeting + (isTyping ? '<span id="typing-cursor" class="typing-cursor">|</span>' : '');
+                            updateTyping();
+                        }, typingSpeed);
+                    } else {
+                        isTyping = false;
+                        if (isErrorActive) {
+                            suggestionPromptDiv.classList.remove('hidden');
+                        }
+                        if (postInvestmentMessage.text) {
+                            return;
+                        }
+                    }
+                } else if (!isErrorActive && !postInvestmentMessage.text) {
+                    typingTimeout = setTimeout(() => {
+                        currentGreeting = currentGreetingsArray[Math.floor(Math.random() * currentGreetingsArray.length)];
+                        displayedGreeting = "";
+                        isTyping = true;
+                        updateTyping();
+                    }, 6000);
+                }
+            };
+            
+            // Initial setup
+            const today = new Date().toISOString().split('T')[0];
+            const todaysInvestments = transactions.filter(t => t.date === today && t.description === 'New Investment');
+            hasInvestedToday = todaysInvestments.length > 0;
+            currentGreetingsArray = hasInvestedToday ? returnGreetings : initialGreetings;
+            currentGreeting = currentGreetingsArray[Math.floor(Math.random() * currentGreetingsArray.length)];
+            updateTyping();
+
+            const handleInteraction = () => {
+                if (postInvestmentMessage.text) {
+                    postInvestmentMessage = { emoji: "", text: "" };
+                    hasInvestedToday = true;
+                    currentGreetingsArray = returnGreetings;
+                    currentGreeting = currentGreetingsArray[Math.floor(Math.random() * currentGreetingsArray.length)];
+                    displayedGreeting = "";
+                    isTyping = true;
+                    updateTyping();
+                }
+            };
+
+            investAmountInput.addEventListener('input', (e) => {
+                handleInteraction();
+                const value = e.target.value;
+                if (value.length > 0 && investAmountInput.value.length === 1) {
+                    typingEmojiSpan.classList.remove('hidden');
+                    emojiAnimationClass = typingAnimations[Math.floor(Math.random() * typingAnimations.length)];
+                    typingEmojiSpan.className = `text-2xl ${emojiAnimationClass}`;
+                    typingEmojiSpan.textContent = typingEmojis[Math.floor(Math.random() * typingEmojis.length)];
+                } else if (value.length === 0) {
+                    typingEmojiSpan.classList.add('hidden');
+                }
+
+                if (isErrorActive) {
+                    isErrorActive = false;
+                    currentGreeting = currentGreetingsArray[Math.floor(Math.random() * currentGreetingsArray.length)];
+                    displayedGreeting = "";
+                    isTyping = true;
+                    updateTyping();
+                }
+                if (!suggestionPromptDiv.classList.contains('hidden')) {
+                    suggestionPromptDiv.classList.add('hidden');
+                }
+            });
+
+            currencySelect.addEventListener('change', () => {
+                const currency = currencySelect.value;
+                currencySymbolSpan.textContent = currency === 'NGN' ? '₦' : '$';
+            });
+            currencySymbolSpan.textContent = currencySelect.value === 'NGN' ? '₦' : '$';
+
+            investNowBtn.addEventListener('click', () => {
+                handleInteraction();
+                const amount = investAmountInput.value;
+                if (!amount || parseFloat(amount) <= 0) {
+                    if (postInvestmentMessage.text) return;
+                    currentGreeting = errorGreetings[Math.floor(Math.random() * errorGreetings.length)];
+                    displayedGreeting = "";
+                    isTyping = true;
+                    isErrorActive = true;
+                    suggestionPromptDiv.classList.add('hidden');
+                    updateTyping();
+                    return;
+                }
+                paymentOptionsDiv.classList.remove('hidden');
+            });
+            
+            closePaymentOptionsBtn.addEventListener('click', () => {
+                paymentOptionsDiv.classList.add('hidden');
+            });
+
+            const processInvestment = (method, status = 'Successful') => {
+                const amount = parseFloat(investAmountInput.value);
+                const currency = currencySelect.value;
+                const description = 'New Investment';
+                const date = new Date().toISOString().split('T')[0];
+                const amountString = (status === 'Pending' ? '' : '-') + (currency === 'NGN' ? '₦' : '$') + amount.toFixed(2);
+                
+                transactions.push({ description, amount: amountString, method, status, date });
+                saveTransactions();
+                updateBalanceAndTransactionsList();
+
+                isGreetingPaused = true;
+                
+                let title, descriptionText;
+                if (status === 'Pending') {
+                    title = "Transfer Submitted!";
+                    descriptionText = `Your investment of ${currency} ${amount} is pending confirmation.`;
+                } else {
+                    title = "Investment Submitted!";
+                    descriptionText = `Your investment of ${currency} ${amount} has been received.`;
+                }
+                
+                showToast(title, descriptionText, status !== 'Pending');
+                
+                investAmountInput.value = "";
+                typingEmojiSpan.classList.add('hidden');
+                suggestionPromptDiv.classList.add('hidden');
+                paymentOptionsDiv.classList.add('hidden');
+            };
+
+            payWithCardBtn.addEventListener('click', () => {
+                processInvestment('Card', 'Successful');
+            });
+
+            payWithBankBtn.addEventListener('click', () => {
+                const amount = parseFloat(investAmountInput.value);
+                const currency = currencySelect.value;
+                bankTransferAmountP.textContent = `${currency === 'NGN' ? '₦' : '$'} ${amount.toLocaleString()}`;
+                bankTransferModal.classList.remove('hidden');
+            });
+
+            closeBankModalBtn.addEventListener('click', () => {
+                bankTransferModal.classList.add('hidden');
+            });
+            
+            confirmTransferBtn.addEventListener('click', () => {
+                processInvestment('Bank Transfer', 'Pending');
+                bankTransferModal.classList.add('hidden');
+            });
+
+            copyBankDetailsBtn.addEventListener('click', () => {
+                const tempInput = document.createElement('textarea');
+                tempInput.value = bankAccountNumberP.textContent;
+                document.body.appendChild(tempInput);
+                tempInput.select();
+                document.execCommand('copy');
+                document.body.removeChild(tempInput);
+                showToast("Copied!", "Bank account number copied to clipboard.");
+            });
+            
+            suggestionYesBtn.addEventListener('click', () => {
+                suggestionPromptDiv.classList.add('hidden');
+                isErrorActive = false;
+                postInvestmentMessage = { emoji: "", text: "" };
+
+                let suggestedAmount;
+                if (currencySelect.value === 'NGN') {
+                    suggestedAmount = Math.floor(Math.random() * (20000 - 3000 + 1)) + 3000;
+                } else { // USD
+                    suggestedAmount = Math.floor(Math.random() * (500 - 50 + 1)) + 50;
+                }
+                investAmountInput.value = String(suggestedAmount);
+                typingEmojiSpan.classList.remove('hidden');
+                emojiAnimationClass = typingAnimations[Math.floor(Math.random() * typingAnimations.length)];
+                typingEmojiSpan.className = `text-2xl ${emojiAnimationClass}`;
+                typingEmojiSpan.textContent = typingEmojis[Math.floor(Math.random() * typingEmojis.length)];
+
+                currentGreeting = "Please check the field box for the amount I have suggested.";
+                displayedGreeting = "";
+                isTyping = true;
+                updateTyping();
+            });
+
+            suggestionNoBtn.addEventListener('click', () => {
+                suggestionPromptDiv.classList.add('hidden');
+                isErrorActive = false;
+                currentGreeting = "Oh, thank you for the reply. I was just concerned.";
+                displayedGreeting = "";
+                isTyping = true;
+                updateTyping();
+            });
+        });
+    </script>
+</body>
+</html>
